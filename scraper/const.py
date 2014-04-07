@@ -1,9 +1,17 @@
 """Generic package constants."""
 
+# Socials backends.
 FACEBOOK = 'facebook'
 TWITTER = 'twitter'
 
 SOCIALS = (TWITTER, FACEBOOK)
+
+# Cache backends.
+SQLALCHEMY = 'sqlalchemy'
+REDIS = 'redis'
+CACHE = 'CACHE_ENGINE'
+
+CACHES = (SQLALCHEMY, REDIS)
 
 # Config *.ini file path as argument.
 ARG_CONFIG_PATH = ("-c", "--config")

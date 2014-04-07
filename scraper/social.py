@@ -1,17 +1,39 @@
+import datetime
 
+from flask import current_app
 from flask.ext.oauth import OAuth
 from scraper import const
+from scraper import utils
+
 
 oauth2 = OAuth()
 
-# CONSUMER_KEY = "tABdYJMuPkqlQ7G9Q9JQkyh25"
-# CONSUMER_SECRET = "qEUkeXVDyqIgDGl6aZyIS18wVAyhnmU0XxEvNgVkf7UXfbbDa1"
-#
-# ACCESS_KEY = "2430801134-A7lrsPohAE0awA00CzH8P9rqbvTz9xDRSCQkG7r"
-# ACCESS_SECRET = "DUmSjuYlnFuIaLwUi4i33NhILojrj172wLvmUBsgjXEwR"
-#
 
-class Social(object):
+class User(utils.ADict):
+    """Holds app specified user to got from social or cache."""
+
+    attrs = (
+        ('user_id', str, None),
+        ('social_id', str, None),
+
+        ('name', str, None),
+        ('popularity', int, None),
+        # ('updated_at', datetime.datetime, datetime.datetime.now()),
+        ('cached', bool, False),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(User, self).__init__()
+
+        # Update defaults according to given args and kwargs.
+        arguments = dict(*args, **kwargs)
+
+        for name, typ, default in self.attrs:
+            value = arguments.get(name)
+            self[name] = default if value is None else typ(value)
+
+
+class _Social(object):
 
     # Application name
     name = None
@@ -34,7 +56,13 @@ class Social(object):
     # Authorization url
     authorize_url = 'https://api.example.com/oauth/authenticate'
 
+    config_attrs = ('consumer_key', 'consumer_secret',
+                    'access_key', 'access_secret')
+
     def __init__(self, *args, **kwargs):
+        for attr in self.config_attrs:
+            setattr(self, attr, current_app.config[self.name].get(attr))
+
         self.api = oauth2.remote_app(
             self.name,
             base_url=self.api_url,
@@ -48,18 +76,21 @@ class Social(object):
             *args,
             **kwargs
         )
-        @self.api.tokengetter
-        def f():
-            if not self.access_key and not self.access_secret:
-                return None
 
-            return self.access_key, self.access_secret
+        self.api.tokengetter(self._get_token)
 
-    def get_user(self, user_name):
-        return dict(user_name=None, name=None)
+    def _get_token(self):
+        if not self.access_key and not self.access_secret:
+            return None
+
+        return self.access_key, self.access_secret
+
+    def get_user(self, username):
+        """Return User instance got from social."""
+        return User(user_id=username, social_id=self.name)
 
 
-class Twitter(Social):
+class Twitter(_Social):
 
     def __init__(self):
         self.name = const.TWITTER
@@ -69,22 +100,19 @@ class Twitter(Social):
         self.access_token_url = 'https://api.twitter.com/oauth/access_token'
         self.authorize_url = 'https://api.twitter.com/oauth/authenticate'
 
-        # get app.
-
-        self.consumer_key = ""
-        self.consumer_secret = CONSUMER_SECRET
-
-        self.access_key = ACCESS_KEY
-        self.access_secret = ACCESS_SECRET
-
         super(Twitter, self).__init__()
 
-    def get_user(self, user_name):
-        response = self.api.get('/1.1/users/show.json', data={'id': user_name})
-        return response.data
+    def get_user(self, username):
+        response = self.api.get('/1.1/users/show.json', data={'id': username})
+
+        user = super(Twitter, self).get_user(username)
+        user.name = response.data['name']
+        user.popularity = response.data['followers_count']
+
+        return user
 
 
-class Facebook(Social):
+class Facebook(_Social):
 
     def __init__(self):
         self.name = const.FACEBOOK
@@ -93,13 +121,6 @@ class Facebook(Social):
         self.request_token_url = None
         self.access_token_url = '/oauth/access_token'
         self.authorize_url = 'https://www.facebook.com/dialog/oauth'
-
-        self.consumer_key = "660159060688183"
-        self.consumer_secret = "ca66655ba7801fabc8d52c10539d0660"
-
-        # self.access_key = "d2c49bdbce48cda73a15ba3d9885dfd1"
-        self.access_key = ''
-        self.access_secret = ''
 
         super(Facebook, self).__init__(
             request_token_params={'scope': 'email'}
@@ -111,5 +132,20 @@ class Facebook(Social):
             print self.access_key
 
     def get_user(self, user_name):
-        response = self.api.get('/me/friends.json')
+        response = self.api.get('/me')
         return response.data
+
+
+def get_engine(social_id, _engine_map=dict()):
+    """Return dictionary with mapped socials."""
+    if not _engine_map:
+        _engine_map = {
+            const.TWITTER: Twitter,
+            const.FACEBOOK: Facebook,
+        }
+
+    return _engine_map.get(social_id)
+
+
+
+

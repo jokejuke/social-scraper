@@ -60,7 +60,7 @@ class Config(object):
                 opts = (
                     ('debug', bool),
                     ('secret_key', str),
-                    ('cache_backend', str),
+                    ('cache_engine', str),
                     ('cache_uri', str),
                     ('cache_debug', bool),
                 )
@@ -113,6 +113,7 @@ class Config(object):
             # App global opts.
             'DEBUG': self._dashboard[const.GENERAL_SECTION]['debug'],
             'SECRET_KEY': self._dashboard[const.GENERAL_SECTION]['secret_key'],
+            'CACHE_ENGINE': self._dashboard[const.GENERAL_SECTION]['cache_engine'],
             'SQLALCHEMY_DATABASE_URI': self._dashboard[const.GENERAL_SECTION]['cache_uri'],
             'SQLALCHEMY_ECHO': self._dashboard[const.GENERAL_SECTION]['cache_debug'],
 
