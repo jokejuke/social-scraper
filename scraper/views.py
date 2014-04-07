@@ -1,6 +1,5 @@
 """API views."""
 import datetime
-import logging
 
 # from flask import Blueprint
 from flask.ext.restful import abort
