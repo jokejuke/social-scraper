@@ -1,6 +1,5 @@
 
 from flask.ext.oauth import OAuth
-from flask import app
 from scraper import const
 
 oauth2 = OAuth()

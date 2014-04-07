@@ -3,39 +3,12 @@
 import ConfigParser
 import logging
 import os
-import sys
 
 from scraper import const
 
 
-class Error(ConfigParser.Error):
-    """Holds typical errors when reading / parsing config file."""
-
-
-class NotFoundError(Error):
-    """Raised if config path not found."""
-
-    def __init__(self, *args, **kwargs):
-        error = (
-            "Path to config file does not specified neither as parameter %s "
-            "nor as environment variable %s" %
-            (const.ARG_CONFIG_PATH, const.ENV_CONFIG_PATH)
-        )
-        super(NotFoundError, self).__init__(error)
-
-
-class SectionValueError(Error):
-    """Raised if given invalid section name."""
-
-    def __init__(self, section_name):
-        error = (
-            "Section %s is in valid. Should be one of the predefined %s"
-            % (section_name, const.CONFIG_SECTIONS)
-        )
-        super(SectionValueError, self).__init__(error)
-
-
 class NonEmptyConfigParser(ConfigParser.SafeConfigParser):
+    """Print warning for empty options in the config."""
 
     def get(self, section, option):
         value = ConfigParser.SafeConfigParser.get(self, section, option)
@@ -44,13 +17,14 @@ class NonEmptyConfigParser(ConfigParser.SafeConfigParser):
             value = value.strip()
 
         if len(value) == 0:
-            msg = ("Section '{0}' and option '{1}' has an disallowed "
-                   "(and likely invalid) empty value!".format(section, option))
+            msg = ("Section '{0}' and option '{1}' has an (likely invalid) "
+                   "empty value!".format(section, option))
             logging.warn(msg)
         return value
 
 
 class Config(object):
+    """Holds reading and parsing of the configuration files (.ini, etc.)"""
 
     def __init__(self, path=None):
         self._parser = NonEmptyConfigParser()
@@ -80,30 +54,28 @@ class Config(object):
 
         for section in const.CONFIG_SECTIONS:
             self._dashboard[section] = dict()
-            try:
-                # General settings.
-                if section == const.GENERAL_SECTION:
-                    opts = (
-                        ('debug', bool),
-                        ('secret_key', str),
-                        ('cache_backend', str),
-                        ('cache_uri', str),
-                    )
-                    self._get_section(section, opts)
 
-                # Socials settings.
-                elif section in const.SOCIAL_SECTIONS:
+            # General settings.
+            if section == const.GENERAL_SECTION:
+                opts = (
+                    ('debug', bool),
+                    ('secret_key', str),
+                    ('cache_backend', str),
+                    ('cache_uri', str),
+                    ('cache_debug', bool),
+                )
+                self._get_section(section, opts)
 
-                    opts = (
-                        ('consumer_key', str),
-                        ('consumer_secret', str),
-                        ('access_key', str),
-                        ('access_secret', str),
-                    )
-                    self._get_section(section, opts)
+            # Socials settings.
+            elif section in const.SOCIAL_SECTIONS:
 
-            except ConfigParser.Error as e:
-                raise Error(e), None, sys.exc_info()[-1]
+                opts = (
+                    ('consumer_key', str),
+                    ('consumer_secret', str),
+                    ('access_key', str),
+                    ('access_secret', str),
+                )
+                self._get_section(section, opts)
 
         return self._dashboard
 
@@ -114,29 +86,37 @@ class Config(object):
 
         # Raised in case if path does not specified anywhere.
         if path is None:
-            raise NotFoundError()
+            msg = (
+                "Path to config file does not specified neither as parameter "
+                "{0} nor as environment variable {1}"
+                .format(const.ARG_CONFIG_PATH, const.ENV_CONFIG_PATH)
+            )
+            raise ConfigParser.Error(msg)
 
         if not os.path.exists(path) or not os.access(path, os.R_OK):
-            raise Error("Configuration file '%s' not found or cannot be read."
-                        % path)
-        try:
-            read_ok = self._parser.read(path)
-        except ConfigParser.Error as e:
-            raise Error(e), None, sys.exc_info()[-1]
-        else:
-            if not read_ok:
-                raise Error("Cannot read config file '%s'." % path)
+            raise ConfigParser.Error(
+                "Configuration file '{0}' not found or cannot be read."
+                .format(path)
+            )
+
+        read_ok = self._parser.read(path)
+        if not read_ok:
+            raise ConfigParser.Error("Cannot read config file '{0}'."
+                                     .format(path))
 
         return self._get()
 
     def to_flask(self):
+        """Return dictionary suitable to set into Flask application config."""
 
         return {
+            # App global opts.
             'DEBUG': self._dashboard[const.GENERAL_SECTION]['debug'],
             'SECRET_KEY': self._dashboard[const.GENERAL_SECTION]['secret_key'],
             'SQLALCHEMY_DATABASE_URI': self._dashboard[const.GENERAL_SECTION]['cache_uri'],
-        }
+            'SQLALCHEMY_ECHO': self._dashboard[const.GENERAL_SECTION]['cache_debug'],
 
-    @property
-    def dashboard(self):
-        return self._dashboard
+            # Socials opts.
+            const.TWITTER: self._dashboard[const.TWITTER],
+            const.FACEBOOK: self._dashboard[const.FACEBOOK],
+        }

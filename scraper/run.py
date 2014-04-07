@@ -14,9 +14,7 @@ if ROOT_PATH not in sys.path:
     sys.path.append(ROOT_PATH)
 
 from scraper import const
-
-# from scraper import tools
-from scraper import start
+from scraper import tools
 
 
 def _init_parser():
@@ -41,12 +39,12 @@ def _init_parser():
         subparser = subparsers.add_parser(func.__name__, help=helpstring)
         subparser.set_defaults(func=func)
 
-    # db_tools = tools.DBTools()
+    app_tools = tools.Tools()
 
-    # _add_action(db_tools.init)
-    # _add_action(db_tools.drop)
-    # _add_action(db_tools.reset)
-    _add_action(start.runserver)
+    _add_action(app_tools.init_db)
+    _add_action(app_tools.drop_db)
+    _add_action(app_tools.reset_db)
+    _add_action(app_tools.run)
 
     return parser
 
@@ -54,8 +52,6 @@ def _init_parser():
 def run_cli():
     """Run CLI interface."""
     try:
-        # TODO: finish db tools handling.
-
         # Parsing
         parser = _init_parser()
         args = parser.parse_args()
@@ -65,8 +61,6 @@ def run_cli():
         args.func()
 
     except Exception as e:
-        logging.exception("Unknown internal error, see the trace below.")
-        return -1
-
+        raise
 if __name__ == "__main__":
-    exit(run_cli())
+    run_cli()

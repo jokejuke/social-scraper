@@ -4,6 +4,7 @@
 from flask import app
 from scraper.tools import db
 
+
 class AlchemyCache(db.Model):
     __tablename__ = "social_user"
 
