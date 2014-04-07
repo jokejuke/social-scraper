@@ -13,13 +13,14 @@ class User(utils.ADict):
     """Holds app specified user to got from social or cache."""
 
     attrs = (
-        ('user_id', str, None),
-        ('social_id', str, None),
+        ('user_id', None),
+        ('social_id', None),
 
-        ('name', str, None),
-        ('popularity', int, None),
-        # ('updated_at', datetime.datetime, datetime.datetime.now()),
-        ('cached', bool, False),
+        ('name', None),
+        ('popularity', None),
+
+        ('updated_at', datetime.datetime.now()),
+        ('cached', False),
     )
 
     def __init__(self, *args, **kwargs):
@@ -28,9 +29,9 @@ class User(utils.ADict):
         # Update defaults according to given args and kwargs.
         arguments = dict(*args, **kwargs)
 
-        for name, typ, default in self.attrs:
+        for name, default in self.attrs:
             value = arguments.get(name)
-            self[name] = default if value is None else typ(value)
+            self[name] = default if value is None else value
 
 
 class _Social(object):
@@ -104,6 +105,8 @@ class Twitter(_Social):
 
     def get_user(self, username):
         response = self.api.get('/1.1/users/show.json', data={'id': username})
+        if response.status != 200:
+            return None
 
         user = super(Twitter, self).get_user(username)
         user.name = response.data['name']
@@ -131,17 +134,24 @@ class Facebook(_Social):
             self.access_key = resp['access_token']
             print self.access_key
 
-    def get_user(self, user_name):
-        response = self.api.get('/me')
-        return response.data
+    def get_user(self, username):
+        response = self.api.get('/{0}/friends.json'.format(username))
+        if response.status != 200:
+            return None
+
+        user = super(Facebook, self).get_user(username)
+        user.name = response.data['name']
+        # user.popularity = response.data['followers_count']
+
+        return user
 
 
 def get_engine(social_id, _engine_map=dict()):
     """Return dictionary with mapped socials."""
     if not _engine_map:
         _engine_map = {
-            const.TWITTER: Twitter,
-            const.FACEBOOK: Facebook,
+            const.TWITTER: Twitter(),
+            const.FACEBOOK: Facebook(),
         }
 
     return _engine_map.get(social_id)

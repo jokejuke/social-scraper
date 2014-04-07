@@ -10,6 +10,8 @@ from scraper.tools import db
 
 
 class AlchemyCache(db.Model):
+    """SQLAlchemy based cache engine."""
+
     __tablename__ = "social_user"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -20,7 +22,9 @@ class AlchemyCache(db.Model):
     popularity = db.Column(db.Integer)
 
     updated_at = db.Column(db.DateTime)
-    removed_at = db.Column(db.DateTime)
+
+    # TODO : use removed_at field when user left in cache but removed in source
+    # removed_at = db.Column(db.DateTime)
 
     def __init__(self, user_id, social_id, name=None, popularity=None):
         self.user_id = user_id
@@ -42,7 +46,6 @@ class AlchemyCache(db.Model):
                 name=cache_user.name,
                 popularity=cache_user.popularity,
                 updated_at=cache_user.updated_at,
-                removed_at=cache_user.removed_at,
                 cached=True
             )
 
@@ -69,7 +72,7 @@ class AlchemyCache(db.Model):
 
 
 class RedisCache(object):
-    pass
+    """Redis based cache engine."""
 
 
 def get_engine(_engine_map={}):

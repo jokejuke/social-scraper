@@ -11,7 +11,7 @@ from scraper import cache
 user_api = Blueprint('user_api', __name__)
 
 
-@user_api.route("/users")
+@user_api.route("/api/users")
 @utils.jsonify
 def get_user(user_id=const.TWITTER, social_id=const.TWITTER, cache_time=-1):
 
@@ -28,8 +28,7 @@ def get_user(user_id=const.TWITTER, social_id=const.TWITTER, cache_time=-1):
             return cached_user
 
     # Get user from social API.
-    api = social.get_engine(social_id)
-    social_user = api().get_user(user_id)
+    social_user = social.get_engine(social_id).get_user(user_id)
     cache.get_engine().add_user(social_user.user_id, social_user.social_id,
                                 social_user)
 

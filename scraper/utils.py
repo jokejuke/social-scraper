@@ -3,6 +3,7 @@
 import json
 import flask
 import functools
+import datetime
 
 
 class ADict(dict):
@@ -33,6 +34,17 @@ class ADict(dict):
         return self.__class__(self)
 
 
+class DateTimeEncoder(json.JSONEncoder):
+    """Add extra ability to encode python datetime.datetime objects."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            encoded_object = str(obj)
+        else:
+            encoded_object = json.JSONEncoder.default(self, obj)
+        return encoded_object
+
+
 def jsonify(func):
     """
     Replacement for built-in flask `jsonify` method.
@@ -43,7 +55,7 @@ def jsonify(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
-        return flask.Response(json.dumps(result), status=200,
-                              mimetype="application/json")
+        return flask.Response(json.dumps(result, cls=DateTimeEncoder),
+                              status=200, mimetype="application/json")
     return wrapper
 
