@@ -4,9 +4,11 @@ import logging
 
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.restful import Api
 
 app = Flask(__name__)
 db = SQLAlchemy()
+api = Api(app)
 
 
 class Tools(object):
@@ -21,7 +23,6 @@ class Tools(object):
         app.config.update(**config.to_flask())
 
         # Register views.
-        app.register_blueprint(views.user_api)
 
         # Init caching engine.
         db.init_app(app)

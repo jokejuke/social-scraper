@@ -64,21 +64,24 @@ class _Social(object):
         for attr in self.config_attrs:
             setattr(self, attr, current_app.config[self.name].get(attr))
 
-        self.api = oauth2.remote_app(
-            self.name,
-            base_url=self.api_url,
-            request_token_url=self.request_token_url,
-            access_token_url=self.access_token_url,
-            authorize_url=self.authorize_url,
+        if self.name not in oauth2.remote_apps:
+            self.api = oauth2.remote_app(
+                self.name,
+                base_url=self.api_url,
+                request_token_url=self.request_token_url,
+                access_token_url=self.access_token_url,
+                authorize_url=self.authorize_url,
 
-            consumer_key=self.consumer_key,
-            consumer_secret=self.consumer_secret,
+                consumer_key=self.consumer_key,
+                consumer_secret=self.consumer_secret,
 
-            *args,
-            **kwargs
-        )
+                *args,
+                **kwargs
+            )
+            self.api.tokengetter(self._get_token)
 
-        self.api.tokengetter(self._get_token)
+        else:
+            self.api = oauth2.remote_apps[self.name]
 
     def _get_token(self):
         if not self.access_key and not self.access_secret:
@@ -135,13 +138,17 @@ class Facebook(_Social):
             print self.access_key
 
     def get_user(self, username):
-        response = self.api.get('/{0}/friends.json'.format(username))
+        user = super(Facebook, self).get_user(username)
+
+        response = self.api.get('/{0}'.format(username))
         if response.status != 200:
             return None
-
-        user = super(Facebook, self).get_user(username)
         user.name = response.data['name']
-        # user.popularity = response.data['followers_count']
+
+        response = self.api.get('/{0}/friends'.format(username))
+        if response.status != 200:
+            return None
+        user.popularity = len(response.data)
 
         return user
 

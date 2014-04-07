@@ -34,21 +34,25 @@ class AlchemyCache(db.Model):
         self.updated_at = datetime.datetime.now()
 
     @classmethod
+    def _to_social_user(cls, user):
+        return social.User(
+            user_id=user.user_id,
+            social_id=user.social_id,
+            name=user.name,
+            popularity=user.popularity,
+            updated_at=user.updated_at,
+            cached=True
+        )
+
+
+    @classmethod
     def get_user(cls, user_id, social_id):
         user = None
 
         query = cls.query.filter_by(user_id=user_id, social_id=social_id)
         cache_user = query.first()
         if cache_user:
-            user = social.User(
-                user_id=cache_user.user_id,
-                social_id=cache_user.social_id,
-                name=cache_user.name,
-                popularity=cache_user.popularity,
-                updated_at=cache_user.updated_at,
-                cached=True
-            )
-
+            user = cls._to_social_user(cache_user)
         return user
 
     @classmethod
@@ -70,13 +74,26 @@ class AlchemyCache(db.Model):
             db.session.commit()
             return user, False
 
+    @classmethod
+    def get_users(cls):
+        users = []
+        cache_users = cls.query.all()
+        for cache_user in cache_users:
+            user = cls._to_social_user(cache_user)
+            users.append(user)
+
+        return users
+
 
 class RedisCache(object):
     """Redis based cache engine."""
 
+    def __init__(self):
+        raise NotImplementedError("Redis based cache does not implemented yet")
+
 
 def get_engine(_engine_map={}):
-    """Return dictionary with mapped cache backends."""
+    """Return mapped cache backend."""
     if not _engine_map:
         _engine_map = {
             const.SQLALCHEMY: AlchemyCache,
